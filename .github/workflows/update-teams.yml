@@ -1,51 +1,47 @@
-name: Upptime Teams Notifications
+name: Notify Teams on Status Change
 
 on:
-  schedule:
-    - cron: "*/5 * * * *"  # Every 5 minutes
-  workflow_dispatch:
+  push:
+    branches:
+      - main  # Change to 'master' if your default branch is master
 
 jobs:
   notify:
-    name: Check and Notify Teams
+    name: Notify Teams
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          fetch-depth: 2  # Fetch recent history to access latest commit
           token: ${{ secrets.GH_PAT || github.token }}
 
-      - name: Get latest commit message
+      - name: Pull latest commit (ensure correct logs)
+        run: git pull origin ${{ github.event.repository.default_branch }}
+
+      - name: Get last commit message
         id: commit
         run: |
-          echo "message=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
+          COMMIT_MSG=$(git log -1 --pretty=format:"%s")
+          echo "message=$COMMIT_MSG" >> $GITHUB_OUTPUT
 
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
-
-      - name: Send Teams Notification
-        if: |
-          contains(steps.commit.outputs.message, '🟥') ||
-          contains(steps.commit.outputs.message, '🟩')
+      - name: Notify Microsoft Teams
+        if: contains(steps.commit.outputs.message, '🟥') || contains(steps.commit.outputs.message, '🟩')
         run: |
           COMMIT_MSG="${{ steps.commit.outputs.message }}"
+          STATUS=$(echo "$COMMIT_MSG" | grep -o '🟥\|🟩')
+          SITE=$(echo "$COMMIT_MSG" | sed -E 's/.*🟥 (.*) is.*/\1/' | sed -E 's/.*🟩 (.*) is.*/\1/')
+          STATE=$(echo "$COMMIT_MSG" | sed -E 's/.* is (.*)/\1/')
 
-          # Extract website name and status
-          if [[ "$COMMIT_MSG" == *"🟥"* ]]; then
-            STATUS="🔴 DOWN"
+          if [[ "$STATUS" == "🟥" ]]; then
+            EMOJI="🔴"
+            TEXT="$EMOJI DOWN: **$SITE**\n🟥 $SITE is $STATE"
           else
-            STATUS="🟢 UP"
+            EMOJI="🟢"
+            TEXT="$EMOJI UP: **$SITE**\n🟩 $SITE is $STATE"
           fi
 
-          # Extract just the site name from commit message (e.g., "knocen")
-          SITE=$(echo "$COMMIT_MSG" | grep -oP '(?<=🟥 |🟩 ).*?(?= is)' || echo "unknown")
-
-          # Compose payload
-          PAYLOAD=$(jq -n \
-            --arg text "$STATUS: **$SITE**\n\n$COMMIT_MSG" \
-            '{text: $text}')
-
           curl -H 'Content-Type: application/json' \
-            -d "$PAYLOAD" \
-            "${{ secrets.TEAMS_WEBHOOK_URL }}"
+               -d "{\"text\": \"$TEXT\"}" \
+               "${{ secrets.TEAMS_WEBHOOK_URL }}"
