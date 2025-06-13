@@ -6,7 +6,7 @@ sites:
   - name: Knocen-dev
     url: https://dev1.knocen.com
   - name: Knocen-qa
-    url: https://qa1.knocen.com
+    url: https://qa1.knocen.co
   - name: Knocen-uat
     url: https://uat1.knocen.com
   - name: PickWinners
