@@ -5,8 +5,10 @@ repo: Upptime # The name of this repository
 sites:
   - name: Knocen-dev
     url: https://dev1.knocen.com
+  - name: Knocen-dev
+    url: https://dev1.knocen.com/testing
   - name: Knocen-qa
-    url: https://qa1.knocen.co
+    url: https://qa1.knocen.com
   - name: Knocen-uat
     url: https://uat1.knocen.com
   - name: PickWinners
