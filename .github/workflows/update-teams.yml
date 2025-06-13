@@ -1,0 +1,51 @@
+name: Upptime Teams Notifications
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"  # Every 5 minutes
+  workflow_dispatch:
+
+jobs:
+  notify:
+    name: Check and Notify Teams
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT || github.token }}
+
+      - name: Get latest commit message
+        id: commit
+        run: |
+          echo "message=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Send Teams Notification
+        if: |
+          contains(steps.commit.outputs.message, '🟥') ||
+          contains(steps.commit.outputs.message, '🟩')
+        run: |
+          COMMIT_MSG="${{ steps.commit.outputs.message }}"
+
+          # Extract website name and status
+          if [[ "$COMMIT_MSG" == *"🟥"* ]]; then
+            STATUS="🔴 DOWN"
+          else
+            STATUS="🟢 UP"
+          fi
+
+          # Extract just the site name from commit message (e.g., "knocen")
+          SITE=$(echo "$COMMIT_MSG" | grep -oP '(?<=🟥 |🟩 ).*?(?= is)' || echo "unknown")
+
+          # Compose payload
+          PAYLOAD=$(jq -n \
+            --arg text "$STATUS: **$SITE**\n\n$COMMIT_MSG" \
+            '{text: $text}')
+
+          curl -H 'Content-Type: application/json' \
+            -d "$PAYLOAD" \
+            "${{ secrets.TEAMS_WEBHOOK_URL }}"
