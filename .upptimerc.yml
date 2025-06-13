@@ -6,7 +6,7 @@ sites:
   - name: Knocen-dev
     url: https://dev1.knocen.com
   - name: Knocen-dev
-    url: https://dev1.knocen.com/testing
+    url: https://dev1.knocen.com/testing23
   - name: Knocen-qa
     url: https://qa1.knocen.com
   - name: Knocen-uat
